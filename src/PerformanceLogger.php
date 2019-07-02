@@ -3,9 +3,14 @@
 namespace EdmondsCommerce\SymfonyPerformanceLogger;
 
 use Psr\Log\LoggerInterface;
+use Psr\Log\LogLevel;
 
 class PerformanceLogger
 {
+    /**
+     * @var float
+     */
+    private $criticalRuntime;
     /**
      * @var LoggerInterface
      */
@@ -19,47 +24,50 @@ class PerformanceLogger
      */
     private $timestamps = [];
 
-    public function __construct(LoggerInterface $logger)
-    {
+    public function __construct(
+        float $criticalRuntime,
+        LoggerInterface $logger
+    ) {
         $this->generateLogId();
 
-        $this->logger = $logger;
+        $this->criticalRuntime = $criticalRuntime;
+        $this->logger          = $logger;
     }
 
-    public function startLogging(): void
+    public function startLogging(array $context = []): void
     {
         $this->addTimestamp();
 
-        $this->log('Started logging');
+        $this->log('Start Logging', $context);
     }
 
-    public function endLogging(): void
+    public function endLogging(array $context = []): void
     {
         $this->addTimestamp();
 
-        $startTimestamp = $this->getStartTimestamp();
-        $endTimestamp   = $this->getLatestTimestamp();
-        $totalRuntime   = $endTimestamp - $startTimestamp;
+        $startTimestamp        = $this->getStartTimestamp();
+        $endTimestamp          = $this->getLatestTimestamp();
+        $totalRuntime          = $endTimestamp - $startTimestamp;
+        $formattedTotalRuntime = $this->formatTimestamp($totalRuntime);
 
-        $this->log(
-            'Ending logging',
-            [
-                'Total Runtime' => $totalRuntime . ' seconds',
-            ]
-        );
+        $this->addContext($context, 'Total Runtime', "$formattedTotalRuntime seconds");
+
+        $level = $totalRuntime < $this->criticalRuntime ? LogLevel::INFO : LogLevel::CRITICAL;
+
+        $this->log('End Logging', $context, $level);
     }
 
-    public function logEvent(string $message, array $context = []): void
+    public function logEvent(string $message, array $context = [], string $level = LogLevel::INFO): void
     {
         $this->addTimestamp();
 
         $previousTimestamp = $this->getPreviousTimestamp();
         $latestTimestamp   = $this->getLatestTimestamp();
-        $sectionRuntime    = $latestTimestamp - $previousTimestamp;
+        $sectionRuntime    = $this->formatTimestamp($latestTimestamp - $previousTimestamp);
 
-        $context['Section Runtime'] = $sectionRuntime . ' seconds';
+        $this->addContext($context, 'Section Runtime', "$sectionRuntime seconds");
 
-        $this->log($message, $context);
+        $this->log($message, $context, $level);
     }
 
     private function generateLogId(): void
@@ -72,12 +80,13 @@ class PerformanceLogger
         return microtime(true);
     }
 
-    private function log(string $message, array $context = []): void
+    private function log(string $message, array $context = [], string $level = LogLevel::INFO): void
     {
-        $timestamp = $this->getLatestTimestamp();
+        $timestamp = round($this->getLatestTimestamp(), 4);
 
-        $this->logger->info(
-            "[{$this->logId}][$timestamp]" . $message,
+        $this->logger->log(
+            $level,
+            "[log_id:{$this->logId}] [microtime:$timestamp] [message:$message]",
             $context
         );
     }
@@ -106,6 +115,16 @@ class PerformanceLogger
     private function addTimestamp(): void
     {
         $this->timestamps[] = $this->getTimestamp();
+    }
+
+    private function formatTimestamp(float $timestamp): string
+    {
+        return number_format($timestamp, 4);
+    }
+
+    private function addContext(array &$context, string $key, $value): void
+    {
+        $context[$key] = $value;
     }
 
     private function assertTimestampsExists(): void
