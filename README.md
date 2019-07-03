@@ -1,7 +1,7 @@
 # symfony-performance-logger
 ## By [Edmonds Commerce](https://www.edmondscommerce.co.uk)
 
-Provides basic symfony performance logging that's safe to use in a live environment.
+Provides basic Symfony performance logging that's safe to use in a live environment.
 
 ## Install
 
@@ -30,11 +30,39 @@ In order to use these listeners you simply need to add the following to your `co
 
 ```yaml
 services:
-kernel.listener.command_dispatch:
+    # Log performance metrics
+    performance.logging:
         class: EdmondsCommerce\SymfonyPerformanceLogger\PerformanceListener
         tags:
             - { name: kernel.event_listener, event: console.command }
             - { name: kernel.event_listener, event: console.terminate }
             - { name: kernel.event_listener, event: kernel.request }
             - { name: kernel.event_listener, event: kernel.terminate }
+
+    # Configure the performance logger
+    EdmondsCommerce\SymfonyPerformanceLogger\PerformanceLogger:
+        arguments: [<Number of seconds you consider critically slow for a command / controller>, '@monolog.logger.performance']
+```
+
+And then configure `performance` logging in `config/packages/prod/monolog.yaml`:
+
+```yaml
+monolog:
+    handlers:
+        # Log performance data
+        performance-stream:
+            type: stream
+            path: "%kernel.logs_dir%/%kernel.environment%.performance.log"
+            level: info
+            channels: ["performance"]
+        # Log performance data to Slack
+        performance-slackwebhook:
+            type: slackwebhook
+            level: critical
+            bot_name: 'Bot Name'
+            webhook_url: "Web Hook Url"
+            channel: "Slack Channel"
+            channels: ["performance"]
+    # Create performance channel
+    channels: ["performance"]
 ```
