@@ -24,7 +24,7 @@ In order to install this module add the following to your `composer.json`:
 }
 ```
 
-## Usage
+## Configure
 
 In order to use these listeners you simply need to add the following to your `config/services.yaml`:
 
