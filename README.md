@@ -44,7 +44,18 @@ services:
         arguments: [<Number of seconds you consider critically slow for a command / controller>, '@monolog.logger.performance']
 ```
 
-And then configure `performance` logging in `config/packages/prod/monolog.yaml`:
+And then create the `performance` channel for all environments `config/packages/test/monolog.yaml`,
+`config/packages/dev/monolog.yaml` and `config/packages/prod/monolog.yaml`.
+This is needed to ensure that `monolog.logger.performance` is available for DI (even though nothing will be logged
+in the other environments):
+
+```yaml
+monolog:
+    # Create performance channel
+    channels: ["performance"]
+```
+
+Finally configure some logging for the `performance` channel in `config/packages/prod/monolog.yaml`:
 
 ```yaml
 monolog:
@@ -63,6 +74,4 @@ monolog:
             webhook_url: "Web Hook Url"
             channel: "Slack Channel"
             channels: ["performance"]
-    # Create performance channel
-    channels: ["performance"]
 ```
